@@ -4,10 +4,13 @@ This document explains the security posture of the **PowaAgent Agent Skill** —
 instruction-only skill (a single `SKILL.md`, no bundled code) that lets an agent look up
 live paid reference data and pay [x402](https://www.x402.org) endpoints in USDC on Base.
 
-By design the skill handles a bearer credential, calls external endpoints, and can initiate
-a payment — but **only from the user's own PowaAgent account wallet, via delegated signing,
-and only within server-side policy.** It cannot access, hold, or move funds from any other
-wallet. Those capabilities are the product, not accidents — this document describes the
+By design the skill handles a bearer credential, reaches external services — either by
+calling an endpoint directly over HTTPS or by invoking a tool the host has surfaced from a
+connected PowaAgent MCP server — and can initiate a payment, but **only from the user's own
+PowaAgent account wallet, via delegated signing, and only within server-side policy.** It
+cannot access, hold, or move funds from any other wallet. On the MCP connector path it
+handles no credential at all: authentication belongs to the host's connection, not the
+skill. Those capabilities are the product, not accidents — this document describes the
 controls that keep each one governed. Automated skill scanners correctly surface these
 capabilities; the sections below are the intended mitigations for them.
 
@@ -15,21 +18,21 @@ capabilities; the sections below are the intended mitigations for them.
 
 ## Current scan status
 
-Independent skill-security scanners audit the published skill. The most recent audits (2026-07-29):
+Independent skill-security scanners audit the published skill. The most recent audits (2026-09-15):
 
 | Scanner | Verdict | What it flags |
 |---|---|---|
-| Gen Agent Trust Hub | Pass | — |
-| Socket | Medium overall; one **Anomaly** alert (low, 83% confidence) | Reads a local secret file, forwards the live API key to its issuer (`api.certaindata.ai` at the time of the audit; now `api.powaagent.ai`), and cannot independently verify the payment-signing endpoints. Socket assesses this as a high-trust financial integration rather than malware. |
-| Snyk | Fail (high, driven by W007) | **W007** — insecure credential handling (high). **W009** — direct money-access capability (medium). **W011** — exposure to third-party seller content (medium). |
+| Gen Agent Trust Hub | Pass (Safe) | — |
+| Socket | One **Anomaly** alert (low, 88% confidence) | Enables real-money payments to external seller endpoints, reads secrets from user-configured files, and relies on PowaAgent API components it cannot publicly verify. Socket credits the skill's defences against prompt injection and finds no installer-malware patterns, but does not classify it as benign. |
+| Snyk | Medium; two warnings, no failures | **W009** — direct money-access capability (medium). **W011** — exposure to third-party seller content (medium). |
 
-These verdicts describe the skill's *intended capabilities*, not malware: credential handling, external calls, delegated signing, and autonomous payment are the product. The named Snyk findings and Socket's Anomaly alert map to controls below — **W007** under **Credential handling**, **W009** under **Payment safety and money movement**, **W011** under **Untrusted external input**, and Socket's **Anomaly** under **Endpoint authenticity and credential destination** (with its local-file concern also covered by **Credential handling**).
+These verdicts describe the skill's *intended capabilities*, not malware: credential handling, external calls, delegated signing, and autonomous payment are the product. The named Snyk findings and Socket's Anomaly alert map to controls below — **W009** under **Payment safety and money movement**, **W011** under **Untrusted external input**, and Socket's **Anomaly** under **Endpoint authenticity and credential destination** (with its local-secret-file concern also covered by **Credential handling**).
 
 ---
 
 ## Credential handling
 
-_Addresses security-scan finding W007 (credential handling)._
+_Addresses the local-secret-file element of Socket's **Anomaly** alert._
 
 The skill reads a PowaAgent API key to authorize delegated signing. Its handling is
 deliberately constrained:
@@ -47,7 +50,7 @@ deliberately constrained:
   send time and never enters the model's generated output. If the key was resolved from
   `secret.env_file` (env var unset/empty), the value is inserted directly to avoid sending
   a blank token. On platforms without substitution, insert the value per the resolution
-  order. *(W007 mitigation.)*
+  order.
 - **Least exposure.** Reading a key from a file outside the workspace requires explicit
   user approval. The key is never persisted into `skill-config.json` (which stores only
   the env-var name and file path, never the secret) and `skill-config.json` is never
@@ -60,13 +63,13 @@ deliberately constrained:
   `secret.env_var`, does not read `secret.env_file`, and never forwards a key to an MCP
   server. Authentication belongs to the connector and is held by the host client — OAuth,
   or the server's own key for orchestrators that cannot do OAuth — so the model never
-  handles a key value on this path, sidestepping W007 entirely. The skill does not open
+  handles a key value on this path at all. The skill does not open
   the MCP transport itself and does not read the host's MCP client configuration; it only
   uses tools the host has already surfaced to it.
 
 ## Endpoint authenticity and credential destination
 
-_Addresses the current Socket **Anomaly** alert (low, 83% confidence; overall scanner risk Medium)._
+_Addresses the current Socket **Anomaly** alert (low, 88% confidence)._
 
 - **Published destinations.** `SKILL.md`'s endpoint table publishes the fixed HTTPS URLs
   for the PowaAgent signing and testnet-funding calls, the PowaHub service catalog,
@@ -81,9 +84,12 @@ _Addresses the current Socket **Anomaly** alert (low, 83% confidence; overall sc
   receives the key either; nor do Coinbase discovery calls or seller calls. Sellers receive
   only the request data they require and, on a paid retry, the x402 payment header.
 
-Socket describes this as a high-trust financial integration rather than malware. The alert
-reflects the unavoidable trust placed in the published signing service and its credential
-handling, not a hidden endpoint or an undisclosed credential destination.
+Socket credits the skill's defences against prompt injection and finds no installer-malware
+patterns, but does not classify it as benign: real-money payment to external sellers, reading
+secrets from user-configured files, and reliance on PowaAgent components it cannot publicly
+verify together place it above that bar. The alert reflects the unavoidable trust placed in
+the published signing service and its credential handling, not a hidden endpoint or an
+undisclosed credential destination.
 
 ## Untrusted external input
 

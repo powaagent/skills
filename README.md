@@ -218,9 +218,9 @@ With an MCP connector, the skill first asks the connector for the endpoint's pay
 
 The skill is **non-custodial and instruction-only**: it never signs payments and never holds your funds. **Your PowaAgent wallet is non-custodial — you keep custody of the private key, and neither the skill nor PowaAgent's backend can access it.** PowaAgent is granted only a scoped signing delegation: it can authorize a payment within the spend caps and allow/deny lists you've defined on your PowaAgent account, and the signature is produced without your key ever being shared with PowaAgent.
 
-Automated skill scanners rate the skill as elevated risk — for the deliberate capabilities it needs (reading an API credential, calling external endpoints, initiating payments), not a vulnerability, undocumented endpoint, or malicious code.
+Automated skill scanners rate the skill as elevated risk — warnings rather than failures — for the deliberate capabilities it needs (reading an API credential, calling external endpoints, initiating payments), not a vulnerability, undocumented endpoint, or malicious code.
 
-See **[SECURITY.md](SECURITY.md)** for the full security model — credential handling, the trust boundary, payment controls, the "what this skill does not do" list, and how to report a vulnerability.
+See **[SECURITY.md](SECURITY.md)** for the full security model — the current scanner verdicts, credential handling, the trust boundary, payment controls, the "what this skill does not do" list, and how to report a vulnerability.
 
 ---
 
