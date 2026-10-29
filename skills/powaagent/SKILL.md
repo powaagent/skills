@@ -48,6 +48,7 @@ All endpoints are referenced from here. If an endpoint changes, change it in thi
 | Public x402 Bazaar — full catalog | `GET https://api.cdp.coinbase.com/platform/v2/x402/discovery/resources?limit=<n>&offset=<n>` |
 
 The Bazaar discovery endpoints are public and require no authentication.
+On the semantic search, set `limit` to 20 or less.
 
 ---
 
